@@ -3,12 +3,10 @@ class StatsController < ApplicationController
 
   before_action :logged_in_user, only: %i[show topic]
   before_action :find_shared_stats_user, only: %i[shared shared_topic shared_games]
+  before_action :set_current_user_and_user_name, only: %i[show games topic]
   before_action :set_sample_user, only: %i[sample sample_topic sample_games]
 
   def show
-    @user = current_user
-    @user_name = @user.email
-
     set_play_types
     set_filters
     set_stats_vars
@@ -33,9 +31,6 @@ class StatsController < ApplicationController
   end
 
   def games
-    @user = current_user
-    @user_name = @user.email
-
     set_play_types
     set_filters
     set_games('stats')
@@ -64,8 +59,6 @@ class StatsController < ApplicationController
   end
 
   def topic
-    @user = current_user
-    @user_name = @user.email
     find_and_render_topic
   end
 
@@ -97,6 +90,11 @@ class StatsController < ApplicationController
     render 'topic'
   end
 
+  def set_current_user_and_user_name
+    @user = current_user
+    @user_name = @user.email
+  end
+
   def set_sample_user
     @user = ENV['SAMPLE_USER'] ? User.find(ENV['SAMPLE_USER']) : User.first
     @user_name = ENV['SAMPLE_USER_NAME'] || @user.email
@@ -105,6 +103,7 @@ class StatsController < ApplicationController
   def find_shared_stats_user
     @user = User.find_by('LOWER(shared_stats_name) = ?', params[:user].downcase)
     render plain: 'User not found', status: :not_found and return if @user.nil?
+
     @user_name = @user.shared_stats_name
   end
 
@@ -132,6 +131,7 @@ class StatsController < ApplicationController
 
   def filters_from_params
     return @ffp if @ffp
+
     @ffp = Hash[FILTER_FIELDS.map { |field| [field, params[field]] }]
     booleanize_verbs
     sanitize_dates
@@ -141,6 +141,7 @@ class StatsController < ApplicationController
   def booleanize_verbs
     %i[show_date_reverse date_played_reverse].each do |field|
       next if @ffp[field].blank?
+
       @ffp[field] = (@ffp[field] == 'true')
     end
   end
@@ -149,6 +150,7 @@ class StatsController < ApplicationController
     %i[show_date_beginning show_date_from show_date_to
        date_played_beginning date_played_from date_played_to].each do |field|
       next if @ffp[field].blank?
+
       begin
         @ffp[field] = Date.parse(@ffp[field]).strftime('%F')
       rescue ArgumentError
