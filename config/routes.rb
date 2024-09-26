@@ -5,8 +5,7 @@ Rails.application.routes.draw do
   get 'help' => 'pages#help'
   get 'about' => 'pages#about'
 
-  get 'signup' => 'users#new'
-  post 'users' => 'users#create'
+  resources :users, only: [:new, :create], path_names: { new: 'signup' }
 
   get 'stats' => 'stats#show'
   get 'sample' => 'stats#sample'
@@ -20,10 +19,11 @@ Rails.application.routes.draw do
   post 'login' => 'sessions#create'
   delete 'logout' => 'sessions#destroy'
 
-  get 'forgot' => 'password_resets#new'
-  post 'forgot' => 'password_resets#create'
-  get 'reset/:id' => 'password_resets#edit', as: :reset
-  patch 'reset/:id' => 'password_resets#update'
+  resources :sessions, only: [:new, :create, :destroy],
+    path_names: { new: 'login' }
+
+  resources :password_resets, only: [:new, :create, :edit, :update],
+    path_names: { new: 'forgot', edit: 'reset' }
 
   get 'game' => 'games#game', as: :game
   delete 'delete/:game_id' => 'games#destroy', as: :delete
