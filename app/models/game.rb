@@ -16,7 +16,7 @@ class Game < ApplicationRecord
   validates :show_date, presence: true
   validates :date_played, presence: true
   validates :game_id, presence: true, uniqueness: { scope: :user_id },
-                                      on: :update
+                      on: :update
   validates :play_type, presence: true, inclusion: { in: PLAY_TYPES.keys }
 
   before_create :set_game_id
@@ -24,7 +24,7 @@ class Game < ApplicationRecord
   after_save :set_dd_results
   after_save :set_clues_right_and_wrong
 
-  default_values show_date:   -> { Time.zone.today },
+  default_values show_date: -> { Time.zone.today },
                  date_played: -> { Time.zone.now }
 
   def to_param
@@ -70,13 +70,11 @@ class Game < ApplicationRecord
     dd_summary = { round_one: round_one_categories.map(&:dd_result).compact,
                    round_two: round_two_categories.map(&:dd_result).compact }
 
-    # rubocop:disable SkipsModelValidations
     update_columns(
       dd1_result: dd_summary[:round_one][0] || 0,
       dd2a_result: dd_summary[:round_two][0] || 0,
       dd2b_result: dd_summary[:round_two][1] || 0
     )
-    # rubocop:enable SkipsModelValidations
   end
 
   # If the show date is unused as a game_id, use that. Otherwise, try the show
@@ -91,31 +89,45 @@ class Game < ApplicationRecord
   end
 
   def set_clues_right_and_wrong
-    sql = "
-    SELECT
-      COUNT(*) FILTER (WHERE result1 = 3) +
-      COUNT(*) FILTER (WHERE result2 = 3) +
-      COUNT(*) FILTER (WHERE result3 = 3) +
-      COUNT(*) FILTER (WHERE result4 = 3) +
-      COUNT(*) FILTER (WHERE result5 = 3) AS clues_right,
-      COUNT(*) FILTER (WHERE result1 = 1) +
-      COUNT(*) FILTER (WHERE result2 = 1) +
-      COUNT(*) FILTER (WHERE result3 = 1) +
-      COUNT(*) FILTER (WHERE result4 = 1) +
-      COUNT(*) FILTER (WHERE result5 = 1) AS clues_wrong
-    FROM sixths
-    where game_id = #{id}
-    "
+    sql = sql_statement_for_set_clues_right_and_wrong
     result = ActiveRecord::Base.connection.select_all(sql).to_a[0]
-    # rubocop:disable SkipsModelValidations
     update_columns(
       clues_right: result['clues_right'],
       clues_wrong: result['clues_wrong']
     )
-    # rubocop:enable SkipsModelValidations
   end
 
   def add_default_date_played
     self.date_played = Time.new(0, 12, 31, 12, 0, 0, 0) if date_played.nil?
+  end
+
+  def sql_statement_for_set_clues_right_and_wrong
+    "
+    SELECT
+    #{sql_statement_for_set_clues_right}
+    #{sql_statement_for_set_clues_wrong}
+    FROM sixths
+    where game_id = #{id}
+    "
+  end
+
+  def sql_statement_for_set_clues_right
+    "
+    COUNT(*) FILTER (WHERE result1 = 3) +
+    COUNT(*) FILTER (WHERE result2 = 3) +
+    COUNT(*) FILTER (WHERE result3 = 3) +
+    COUNT(*) FILTER (WHERE result4 = 3) +
+    COUNT(*) FILTER (WHERE result5 = 3) AS clues_right,
+    "
+  end
+
+  def sql_statement_for_set_clues_wrong
+    "
+    COUNT(*) FILTER (WHERE result1 = 1) +
+    COUNT(*) FILTER (WHERE result2 = 1) +
+    COUNT(*) FILTER (WHERE result3 = 1) +
+    COUNT(*) FILTER (WHERE result4 = 1) +
+    COUNT(*) FILTER (WHERE result5 = 1) AS clues_wrong
+    "
   end
 end
