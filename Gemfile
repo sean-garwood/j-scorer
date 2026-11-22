@@ -1,7 +1,7 @@
 # rubocop:disable FileName
 source 'https://rubygems.org'
 
-ruby '3.1.2'
+ruby file: '.ruby-version'
 gem 'rails', '~> 6.1.0'
 
 # Temporary fix until Rails >= 7.0.1:
